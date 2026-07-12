@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Second Brain</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      background: #0f0f10;
+      color: #e8e8e8;
+      min-height: 100vh;
+      padding: 32px 20px;
+    }
+    .wrap { max-width: 820px; margin: 0 auto; }
+    h1 { font-size: 26px; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .sub { color: #777; font-size: 14px; margin-bottom: 28px; }
+    .card {
+      background: #1a1a1c;
+      border: 1px solid #2a2a2e;
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .card h2 { font-size: 13px; text-transform: uppercase;
+      letter-spacing: 1px; color: #888; margin-bottom: 12px; }
+    input, textarea, select {
+      width: 100%; padding: 10px 12px; background: #101012;
+      border: 1px solid #2f2f34; border-radius: 6px;
+      color: #e8e8e8; font-size: 14px; font-family: inherit;
+      margin-bottom: 8px;
+    }
+    textarea { resize: vertical; min-height: 70px; }
+    button {
+      background: #e8e8e8; color: #0f0f10; border: none;
+      padding: 9px 18px; border-radius: 6px; font-weight: 600;
+      font-size: 13px; cursor: pointer;
+    }
+    button:hover { background: #fff; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .row { display: flex; gap: 8px; }
+    .row input { margin-bottom: 0; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tab {
+      padding: 6px 14px; border-radius: 6px; font-size: 13px;
+      cursor: pointer; background: #232326; color: #999;
+    }
+    .tab.on { background: #e8e8e8; color: #0f0f10; font-weight: 600; }
+    .msg { font-size: 13px; margin-top: 8px; color: #6ee7a8; }
+    .msg.err { color: #f87171; }
+    .answer {
+      background: #141416; border-left: 3px solid #4b7bec;
+      padding: 16px; border-radius: 6px; margin-top: 12px;
+      line-height: 1.65; font-size: 14px; white-space: pre-wrap;
+    }
+    .meta { font-size: 12px; color: #777; margin-top: 10px; }
+    .doc {
+      display: flex; justify-content: space-between;
+      align-items: center; padding: 9px 0;
+      border-bottom: 1px solid #252528; font-size: 13px;
+    }
+    .doc:last-child { border: none; }
+    .badge {
+      font-size: 10px; text-transform: uppercase; padding: 2px 7px;
+      border-radius: 4px; background: #2a2a30; color: #999;
+      margin-right: 8px; letter-spacing: 0.5px;
+    }
+    .spin { color: #666; font-size: 13px; margin-top: 8px; }
+    .del {
+  background: transparent;
+  color: #666;
+  border: 1px solid #333;
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.del:hover {
+  background: #3a1f22;
+  border-color: #7f3438;
+  color: #f87171;
+}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Second Brain</h1>
+  <div class="sub">Your personal knowledge base — save anything, ask anything.</div>
+
+  <!-- ADD -->
+  <div class="card">
+    <h2>Add Knowledge</h2>
+    <div class="tabs">
+      <div class="tab on" onclick="tab('web')">Web Link</div>
+      <div class="tab" onclick="tab('note')">Note</div>
+      <div class="tab" onclick="tab('pdf')">PDF</div>
+    </div>
+
+    <div id="web-box">
+      <div class="row">
+        <input id="url" placeholder="https://example.com/article">
+        <button onclick="addWeb()">Save</button>
+      </div>
+    </div>
+
+    <div id="note-box" style="display:none">
+      <input id="note-title" placeholder="Title">
+      <textarea id="note-text" placeholder="Paste or write your note..."></textarea>
+      <button onclick="addNote()">Save Note</button>
+    </div>
+
+    <div id="pdf-box" style="display:none">
+      <div class="row">
+        <input type="file" id="pdf-file" accept=".pdf">
+        <button onclick="addPdf()">Upload</button>
+      </div>
+    </div>
+
+    <div id="add-msg"></div>
+  </div>
+
+  <!-- ASK -->
+  <div class="card">
+    <h2>Ask Your Brain</h2>
+    <textarea id="q" placeholder="Summarize everything I've saved about..."></textarea>
+    <div class="row" style="margin-top:6px">
+      <select id="filter" style="max-width:150px">
+        <option value="">All sources</option>
+        <option value="web">Web only</option>
+        <option value="pdf">PDF only</option>
+        <option value="note">Notes only</option>
+      </select>
+      <select id="days" style="max-width:150px">
+        <option value="">All time</option>
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+      </select>
+      <button onclick="ask()" id="ask-btn">Ask</button>
+    </div>
+    <div id="ask-out"></div>
+  </div>
+
+  <!-- DOCS -->
+  <div class="card">
+    <h2>Saved <span id="count" style="color:#555"></span></h2>
+    <div id="docs"></div>
+  </div>
+</div>
+
+<script>
+const API = '';
+
+function tab(t) {
+  document.querySelectorAll('.tab').forEach(e => e.classList.remove('on'));
+  event.target.classList.add('on');
+  ['web','note','pdf'].forEach(x => {
+    document.getElementById(x + '-box').style.display = x === t ? 'block' : 'none';
+  });
+}
+
+function msg(text, isErr) {
+  document.getElementById('add-msg').innerHTML =
+    `<div class="msg ${isErr ? 'err' : ''}">${text}</div>`;
+  setTimeout(() => document.getElementById('add-msg').innerHTML = '', 4000);
+}
+
+async function addWeb() {
+  const url = document.getElementById('url').value.trim();
+  if (!url) return;
+  msg('Fetching...');
+  try {
+    const r = await fetch(API + '/add/web', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Failed');
+    msg(`Saved "${d.title}" — ${d.chunks_stored} chunks`);
+    document.getElementById('url').value = '';
+    loadDocs();
+  } catch (e) { msg(e.message, true); }
+}
+
+async function addNote() {
+  const text = document.getElementById('note-text').value.trim();
+  const title = document.getElementById('note-title').value.trim() || 'Untitled Note';
+  if (!text) return;
+  msg('Saving...');
+  try {
+    const r = await fetch(API + '/add/note', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text, title})
+    });
+    const d = await r.json();
+    msg(`Saved "${title}" — ${d.chunks_stored} chunks`);
+    document.getElementById('note-text').value = '';
+    document.getElementById('note-title').value = '';
+    loadDocs();
+  } catch (e) { msg(e.message, true); }
+}
+
+async function addPdf() {
+  const f = document.getElementById('pdf-file').files[0];
+  if (!f) return;
+  msg('Processing PDF...');
+  const fd = new FormData();
+  fd.append('file', f);
+  try {
+    const r = await fetch(API + '/add/pdf', {method: 'POST', body: fd});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Failed');
+    msg(`Saved "${d.source}" — ${d.chunks_stored} chunks`);
+    loadDocs();
+  } catch (e) { msg(e.message, true); }
+}
+
+async function ask() {
+  const question = document.getElementById('q').value.trim();
+  if (!question) return;
+  const btn = document.getElementById('ask-btn');
+  const out = document.getElementById('ask-out');
+  btn.disabled = true;
+  out.innerHTML = '<div class="spin">Thinking across your sources...</div>';
+
+  const body = {question};
+  const st = document.getElementById('filter').value;
+  const db = document.getElementById('days').value;
+  if (st) body.source_type = st;
+  if (db) body.days_back = parseInt(db);
+
+  try {
+    const r = await fetch(API + '/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    out.innerHTML = `
+      <div class="answer">${d.answer}</div>
+      <div class="meta">
+        ${d.chunks_used} chunks · ${d.sources.length} source(s) · ${d.latency_ms}ms<br>
+        ${d.sources.map(s => '— ' + s).join('<br>')}
+      </div>`;
+  } catch (e) {
+    out.innerHTML = `<div class="msg err">${e.message}</div>`;
+  }
+  btn.disabled = false;
+}
+
+async function loadDocs() {
+  const r = await fetch(API + '/documents');
+  const d = await r.json();
+  document.getElementById('count').textContent = `(${d.count})`;
+  document.getElementById('docs').innerHTML = d.documents.length
+    ? d.documents.map(x => `
+        <div class="doc">
+          <div><span class="badge">${x.source_type}</span>${x.title}</div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="color:#666">${x.chunk_count} chunks</span>
+            <button class="del" onclick="delDoc('${x.source_name.replace(/'/g, "\\'")}', '${x.title.replace(/'/g, "\\'")}')">Delete</button>
+          </div>
+        </div>`).join('')
+    : '<div style="color:#666;font-size:13px">Nothing saved yet.</div>';
+}
+async function delDoc(sourceName, title) {
+  if (!confirm(`Delete "${title}"?\n\nThis removes all its chunks from your knowledge base.`)) {
+    return;
+  }
+  try {
+    const r = await fetch(
+      API + '/documents?source_name=' + encodeURIComponent(sourceName),
+      { method: 'DELETE' }
+    );
+    const d = await r.json();
+    msg(`Deleted "${title}" — ${d.deleted_chunks} chunks removed`);
+    loadDocs();
+  } catch (e) {
+    msg('Delete failed: ' + e.message, true);
+  }
+}
+loadDocs();
+</script>
+</body>
+</html>
